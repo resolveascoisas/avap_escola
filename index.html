@@ -491,11 +491,11 @@
                 if (pct === -1) {
                     htmlRows += `<td class="cell-empty">-</td>`;
                 } else {
-                    htmlRows += `<td class="${getSemaforoClass(pct)} interactive-cell" data-showing-pct="true" data-pct="${pctStr}" data-rank="Posição: ${rInt}" onclick="window.toggleTextoCelula(this)">${pctStr}</td>`;
+                    htmlRows += `<td class="${getSemaforoClass(pct)} interactive-cell" data-showing-pct="true" data-pct="${pctStr}" data-rank="${rInt}" onclick="window.toggleTextoCelula(this)">${pctStr}</td>`;
                 }
             });
 
-            htmlRows += `<td class="col-total ${getSemaforoClass(item.mediaGeral)} interactive-cell" data-showing-pct="true" data-pct="${mgStr}" data-rank="Posição: ${rIntMg}" onclick="window.toggleTextoCelula(this)">${mgStr}</td></tr>`;
+            htmlRows += `<td class="col-total ${getSemaforoClass(item.mediaGeral)} interactive-cell" data-showing-pct="true" data-pct="${mgStr}" data-rank="${rIntMg}" onclick="window.toggleTextoCelula(this)">${mgStr}</td></tr>`;
 
             // Configuração dos rótulos e barras do Gráfico
             let labelGrafico = modoGeralURE ? item.nomeExibicao.substring(0, 15) + "..." : item.nomeExibicao;
