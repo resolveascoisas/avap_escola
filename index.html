@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Analítico AVAP - Login Seguro</title>
+    <title>Painel Analítico AVAP - URE</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -61,7 +61,7 @@
         .th-active .sort-icon { color: white; }
 
         .col-clas { width: 60px; font-weight: 700; color: var(--secondary); background: #f1f5f9;}
-        .col-text { text-align: left !important; font-weight: 600; background: #f8fafc; white-space: normal !important; width: 180px; }
+        .col-text { text-align: left !important; font-weight: 600; background: #f8fafc; white-space: normal !important; width: 220px; }
         .col-total { font-weight: 700; border-left: 2px solid #94a3b8 !important; }
         .row-total td { border-top: 2px solid var(--primary); font-weight: 700; background: #f1f5f9; cursor: default; }
 
@@ -111,15 +111,15 @@
 <div id="loginSection" class="login-screen">
     <div class="login-card">
         <h2>Painel Analítico AVAP</h2>
-        <p>Insira as credenciais de acesso da Unidade Escolar</p>
+        <p>Insira as credenciais de acesso</p>
         
         <div class="input-group">
-            <label>Identificador da Escola:</label>
+            <label>Identificador de Acesso:</label>
             <input type="text" id="loginEmail" placeholder="exemplo@avap.ure" autocomplete="username">
         </div>
         
         <div class="input-group">
-            <label>Senha de Acesso:</label>
+            <label>Senha:</label>
             <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
         </div>
         
@@ -133,7 +133,7 @@
         <div class="header-left">
             <img src="imagens/logo-ure-avare-site.png" alt="Logo URE" class="logo-img no-print" onerror="this.style.display='none'">
             <div class="header-text">
-                <h1 id="txtNomeEscola">Carregando Unidade...</h1>
+                <h1 id="txtNomeEscola">Carregando Painel...</h1>
                 <p>Granulação por Turma - Clique sobre a % para ver a colocação interna!</p>
             </div>
         </div>
@@ -144,6 +144,13 @@
     </div>
 
     <div class="controls no-print">
+        <div id="filtroEscolaContainer" style="display: none;">
+            <label>Unidade Escolar:</label>
+            <select id="escolaFiltroSelect" onchange="window.renderizarTabelaEGrafico()">
+                <option value="TODAS">Visão Geral URE (Todas)</option>
+            </select>
+        </div>
+        
         <div>
             <label>Etapa de Ensino:</label>
             <select id="etapaSelect" onchange="window.renderizarTabelaEGrafico()">
@@ -175,7 +182,7 @@
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
     // =====================================================================
-    // CREDENCIAIS DO SUPABASE (Atualizadas e corrigidas)
+    // CREDENCIAIS DO SUPABASE
     // =====================================================================
     const SUPABASE_URL = 'https://tcqppqgpbbtyxyfftcrb.supabase.co'; 
     const SUPABASE_ANON_KEY = 'sb_publishable_UEe5XXKEkzvPlA61E6vDjQ_kVQwfiCH'; 
@@ -235,20 +242,40 @@
                 .eq('email', emailUsuario)
                 .single();
 
-            if (errPerm || !permissoes) throw new Error("Usuário não associado a uma escola ativa.");
+            if (errPerm || !permissoes) throw new Error("Usuário não associado a uma conta válida.");
             escolaOficialLogada = permissoes.nome_escola;
-            document.getElementById('txtNomeEscola').innerText = escolaOficialLogada;
+            
+            let ehMaster = (escolaOficialLogada === 'URE_MASTER');
+            document.getElementById('txtNomeEscola').innerText = ehMaster ? "Unidade Regional de Ensino (Avaré)" : escolaOficialLogada;
 
-            const { data: resultados, error: errData } = await supabase
-                .from('resultados_avap')
-                .select('*')
-                .eq('escola', escolaOficialLogada);
+            // Busca dos dados com lógica URE
+            let query = supabase.from('resultados_avap').select('*');
+            if (!ehMaster) {
+                query = query.eq('escola', escolaOficialLogada);
+            }
 
+            const { data: resultados, error: errData } = await query;
             if (errData) throw errData;
             bancoDadosEscola = resultados;
 
             disciplinasDisponiveis.clear();
             bancoDadosEscola.forEach(r => disciplinasDisponiveis.add(r.disciplina));
+
+            // Configuração dinâmica do Filtro da URE
+            if (ehMaster) {
+                let escolasNoBanco = [...new Set(bancoDadosEscola.map(r => r.escola))].sort();
+                let selectEscola = document.getElementById('escolaFiltroSelect');
+                selectEscola.innerHTML = '<option value="TODAS">Visão Geral URE (Todas)</option>';
+                escolasNoBanco.forEach(esc => {
+                    let opt = document.createElement('option');
+                    opt.value = esc;
+                    opt.innerText = esc;
+                    selectEscola.appendChild(opt);
+                });
+                document.getElementById('filtroEscolaContainer').style.display = 'block';
+            } else {
+                document.getElementById('filtroEscolaContainer').style.display = 'none';
+            }
 
             mostrarSeccao('DASHBOARD');
             window.renderizarTabelaEGrafico();
@@ -285,8 +312,11 @@
     function filtrarTurmasLocais(dados) {
         let fEtapa = document.getElementById('etapaSelect').value;
         let fTurno = document.getElementById('turnoSelect').value;
+        let selectEscola = document.getElementById('escolaFiltroSelect');
+        let fEscola = selectEscola ? selectEscola.value : "TODAS";
 
         return dados.filter(row => {
+            if (escolaOficialLogada === 'URE_MASTER' && fEscola !== 'TODAS' && row.escola !== fEscola) return false;
             if (fTurno !== 'TODOS' && row.turno !== fTurno) return false;
             if (fEtapa === 'EFAF' && row.etapa !== 'EFAF') return false;
             if (fEtapa === 'EM_TODOS' && !row.etapa.startsWith('EM')) return false;
@@ -299,7 +329,7 @@
     function calcularPosicaoInterna(listaTurmas, tNome, valor, field) {
         if(valor === -1 || valor === undefined) return "-";
         let filtrados = listaTurmas.map(t => ({
-            nome: t.turma,
+            nome: t.chaveVisao,
             val: field === 'mediaGeral' ? t.mediaGeral : (t.disciplinas[field] ? t.disciplinas[field].pct : -1)
         })).filter(x => x.val !== -1);
 
@@ -316,7 +346,16 @@
         const discArray = Array.from(disciplinasDisponiveis).sort();
         let linhasFiltradas = filtrarTurmasLocais(bancoDadosEscola);
 
-        let turmasUnicas = [...new Set(linhasFiltradas.map(l => l.turma))];
+        let selectEscola = document.getElementById('escolaFiltroSelect');
+        let fEscola = selectEscola ? selectEscola.value : "TODAS";
+        let vendoTodasAsEscolas = (escolaOficialLogada === 'URE_MASTER' && fEscola === 'TODAS');
+
+        // Cria um identificador visual para quando estiver vendo a URE inteira
+        linhasFiltradas.forEach(l => {
+            l.chaveVisao = vendoTodasAsEscolas ? `${l.escola.split(' ')[0]} - ${l.turma}` : l.turma;
+        });
+
+        let turmasUnicas = [...new Set(linhasFiltradas.map(l => l.chaveVisao))];
         let listaTurmasProcessadas = [];
 
         let globAcertos = 0, globPossiveis = 0, globAlunos = 0;
@@ -324,11 +363,11 @@
         discArray.forEach(d => globDisc[d] = { acertos: 0, possiveis: 0 });
 
         turmasUnicas.forEach(tName => {
-            let dadosDaTurma = linhasFiltradas.filter(l => l.turma === tName);
+            let dadosDaTurma = linhasFiltradas.filter(l => l.chaveVisao === tName);
             let p = dadosDaTurma[0];
 
             let tObj = {
-                turma: tName, pres: p.alunos_presentes, etapa: p.etapa, turno: p.turno,
+                chaveVisao: tName, pres: p.alunos_presentes, etapa: p.etapa, turno: p.turno,
                 acertos: 0, possiveis: 0, disciplinas: {}
             };
             discArray.forEach(d => tObj.disciplinas[d] = { acertos: 0, possiveis: 0, pct: -1 });
@@ -357,12 +396,12 @@
 
         listaTurmasProcessadas.sort((a, b) => {
             let valA, valB;
-            if (currentSortCol === 'nome') { valA = a.turma; valB = b.turma; }
+            if (currentSortCol === 'nome') { valA = a.chaveVisao; valB = b.chaveVisao; }
             else if (currentSortCol === 'pres') { valA = a.pres; valB = b.pres; }
             else if (currentSortCol === 'media') { valA = a.mediaGeral; valB = b.mediaGeral; }
             else { valA = a.disciplinas[currentSortCol].pct; valB = b.disciplinas[currentSortCol].pct; }
 
-            if (valA === valB) return a.turma.localeCompare(b.turma);
+            if (valA === valB) return a.chaveVisao.localeCompare(b.chaveVisao);
             if (typeof valA === 'string') return currentSortDir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
             if (valA === -1) return 1; if (valB === -1) return -1;
             return currentSortDir === 'asc' ? valA - valB : valB - valA;
@@ -374,28 +413,30 @@
         listaTurmasProcessadas.forEach((t, idx) => {
             let clas = idx + 1;
             let mgStr = t.mediaGeral === -1 ? "-" : t.mediaGeral.toFixed(1).replace('.', ',') + "%";
-            let rIntMg = calcularPosicaoInterna(listaTurmasProcessadas, t.turma, t.mediaGeral, 'mediaGeral');
+            let rIntMg = calcularPosicaoInterna(listaTurmasProcessadas, t.chaveVisao, t.mediaGeral, 'mediaGeral');
             
             htmlRows += `<tr>
                 <td class="col-clas">${clas}º</td>
-                <td class="col-text">${t.turma}</td>
+                <td class="col-text" title="${t.chaveVisao}">${t.chaveVisao}</td>
                 <td>${t.pres}</td>`;
 
             discArray.forEach(d => {
                 let pct = t.disciplinas[d].pct;
                 let pctStr = pct === -1 ? "-" : pct.toFixed(1).replace('.', ',') + "%";
-                let rInt = calcularPosicaoInterna(listaTurmasProcessadas, t.turma, pct, d);
+                let rInt = calcularPosicaoInterna(listaTurmasProcessadas, t.chaveVisao, pct, d);
                 
                 if (pct === -1) {
                     htmlRows += `<td class="cell-empty">-</td>`;
                 } else {
-                    htmlRows += `<td class="${getSemaforoClass(pct)} interactive-cell" data-showing-pct="true" data-pct="${pctStr}" data-rank="Sala: ${rInt}" onclick="window.toggleTextoCelula(this)">${pctStr}</td>`;
+                    htmlRows += `<td class="${getSemaforoClass(pct)} interactive-cell" data-showing-pct="true" data-pct="${pctStr}" data-rank="Ranking: ${rInt}" onclick="window.toggleTextoCelula(this)">${pctStr}</td>`;
                 }
             });
 
-            htmlRows += `<td class="col-total ${getSemaforoClass(t.mediaGeral)} interactive-cell" data-showing-pct="true" data-pct="${mgStr}" data-rank="Sala: ${rIntMg}" onclick="window.toggleTextoCelula(this)">${mgStr}</td></tr>`;
+            htmlRows += `<td class="col-total ${getSemaforoClass(t.mediaGeral)} interactive-cell" data-showing-pct="true" data-pct="${mgStr}" data-rank="Ranking: ${rIntMg}" onclick="window.toggleTextoCelula(this)">${mgStr}</td></tr>`;
 
-            labelsGrafico.push(t.turma.substring(0, 12));
+            // Abreviar o rótulo do gráfico se estiver vendo todas as escolas para não poluir
+            let labelGrafico = vendoTodasAsEscolas ? t.chaveVisao : t.chaveVisao.substring(0, 12);
+            labelsGrafico.push(labelGrafico);
             let valChart = currentSortCol === 'media' ? t.mediaGeral : (t.disciplinas[currentSortCol] ? t.disciplinas[currentSortCol].pct : -1);
             valoresGrafico.push(valChart > -1 ? valChart.toFixed(1) : 0);
             coresGrafico.push(getChartColor(valChart));
@@ -404,7 +445,7 @@
         let totalRegistros = listaTurmasProcessadas.length;
         let headerHtml = `<table class="data-table"><thead><tr>
             <th class="col-clas">Clas.<br>/${totalRegistros}</th>
-            <th style="width:180px;" class="${currentSortCol === 'nome' ? 'th-active' : ''}" onclick="window.definirOrdenacao('nome')">Turma/Sala</th>
+            <th style="width:220px;" class="${currentSortCol === 'nome' ? 'th-active' : ''}" onclick="window.definirOrdenacao('nome')">Turma/Sala</th>
             <th class="${currentSortCol === 'pres' ? 'th-active' : ''}" onclick="window.definirOrdenacao('pres')">Alunos<br>(Pres.)</th>`;
         
         discArray.forEach(d => {
@@ -413,7 +454,8 @@
         headerHtml += `<th class="col-total ${currentSortCol === 'media' ? 'th-active' : ''}" onclick="window.definirOrdenacao('media')">Média<br>Geral</th></tr></thead><tbody>`;
 
         let tMedia = globPossiveis > 0 ? (globAcertos / globPossiveis) * 100 : -1;
-        let totalRow = `<tr class="row-total"><td colspan="2" class="col-text">MÉDIA GERAL DA UNIDADE (FILTRADA)</td><td>${globAlunos}</td>`;
+        let textoTotal = vendoTodasAsEscolas ? "MÉDIA GERAL DA URE (FILTRADA)" : "MÉDIA GERAL DA UNIDADE (FILTRADA)";
+        let totalRow = `<tr class="row-total"><td colspan="2" class="col-text">${textoTotal}</td><td>${globAlunos}</td>`;
         discArray.forEach(d => {
             let pct = globDisc[d].possiveis > 0 ? (globDisc[d].acertos / globDisc[d].possiveis) * 100 : -1;
             totalRow += `<td class="${getSemaforoClass(pct)}">${pct === -1 ? "-" : pct.toFixed(1).replace('.', ',') + "%"}</td>`;
