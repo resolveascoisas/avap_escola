@@ -173,15 +173,12 @@
 
 <script type="module">
     // Importa o cliente oficial do Supabase direto do servidor de distribuição
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-    // =====================================================================
-    // COLE SUAS CREDENCIAIS DO SUPABASE AQUI
-    // =====================================================================
-    const SUPABASE_URL = 'SUA_URL_DO_SUPABASE'; 
-    const SUPABASE_ANON_KEY = 'SUA_CHAVE_ANON_PUBLICA'; 
+const supabaseUrl = 'https://tcqppqgpbbtyxyfftcrb.supabase.co'
+const supabaseKey = 'sb_publishable_UEe5XXKEkzvPlA61E6vDjQ_kVQwfiCH' 
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = createClient(supabaseUrl, supabaseKey)
 
     let bancoDadosEscola = []; 
     let disciplinasDisponiveis = new Set();
