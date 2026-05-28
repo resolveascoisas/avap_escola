@@ -146,7 +146,7 @@
     <div class="controls no-print">
         <div>
             <label>Etapa de Ensino:</label>
-            <select id="etapaSelect" onchange="window.renderizarTabelaEGratico()">
+            <select id="etapaSelect" onchange="window.renderizarTabelaEGrafico()">
                 <option value="TODAS">Todas as Etapas</option>
                 <option value="EFAF">EFAF (Ensino Fund. Anos Finais)</option>
                 <option value="EM_TODOS">Ensino Médio (Todos)</option>
@@ -156,7 +156,7 @@
         </div>
         <div>
             <label>Turno:</label>
-            <select id="turnoSelect" onchange="window.renderizarTabelaEGratico()">
+            <select id="turnoSelect" onchange="window.renderizarTabelaEGrafico()">
                 <option value="TODOS">Todos os Turnos</option>
                 <option value="INTEGRAL">Integral</option>
                 <option value="PARCIAL">Parcial</option>
@@ -172,13 +172,12 @@
 </div>
 
 <script type="module">
-    // Importa o cliente oficial do Supabase
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
     // =====================================================================
-    // CREDENCIAIS DO SUPABASE (A chave fornecida já foi inserida)
+    // CREDENCIAIS DO SUPABASE (Atualizadas e corrigidas)
     // =====================================================================
-    const SUPABASE_URL = 'COLE_AQUI_A_SUA_URL'; // <-- FALTA APENAS COLAR A URL (https://tcqp...)
+    const SUPABASE_URL = 'https://tcqppqgpbbtyxyfftcrb.supabase.co'; 
     const SUPABASE_ANON_KEY = 'sb_publishable_UEe5XXKEkzvPlA61E6vDjQ_kVQwfiCH'; 
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -252,7 +251,7 @@
             bancoDadosEscola.forEach(r => disciplinasDisponiveis.add(r.disciplina));
 
             mostrarSeccao('DASHBOARD');
-            window.renderizarTabelaEGratico();
+            window.renderizarTabelaEGrafico();
         } catch (e) {
             alert("Erro crítico de inicialização: " + e.message);
             window.executarLogout();
@@ -269,7 +268,7 @@
             currentSortDir = 'desc';
             if (coluna === 'nome') currentSortDir = 'asc';
         }
-        window.renderizarTabelaEGratico();
+        window.renderizarTabelaEGrafico();
     };
 
     window.toggleTextoCelula = (cell) => {
@@ -313,8 +312,7 @@
         return "-";
     }
 
-    // A função principal agora está exposta para os botões do HTML
-    window.renderizarTabelaEGratico = function() {
+    window.renderizarTabelaEGrafico = function() {
         const discArray = Array.from(disciplinasDisponiveis).sort();
         let linhasFiltradas = filtrarTurmasLocais(bancoDadosEscola);
 
