@@ -30,7 +30,7 @@
         .btn-login:hover { background: #2563eb; }
         .login-error { color: var(--red-vivid); font-size: 13px; margin-top: 15px; font-weight: 500; display: none; }
 
-        /* DASHBOARD (ESCONDIDO POR PADRÃO) */
+        /* DASHBOARD */
         .dashboard-container { max-width: 1400px; margin: 20px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); min-height: 80vh; display: none; }
         
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--border); padding-bottom: 15px; margin-bottom: 20px; gap: 20px;}
@@ -131,7 +131,7 @@
 <div id="dashboardSection" class="dashboard-container">
     <div class="header">
         <div class="header-left">
-            <img src="imagens/logo-ure-avare-site.png" alt="Logo URE Avaré" class="logo-img no-print" onerror="this.style.display='none'">
+            <img src="imagens/logo-ure-avare-site.png" alt="Logo URE" class="logo-img no-print" onerror="this.style.display='none'">
             <div class="header-text">
                 <h1 id="txtNomeEscola">Carregando Unidade...</h1>
                 <p>Granulação por Turma - Clique sobre a % para ver a colocação interna!</p>
@@ -146,7 +146,7 @@
     <div class="controls no-print">
         <div>
             <label>Etapa de Ensino:</label>
-            <select id="etapaSelect" onchange="renderizarTabelaEGratico()">
+            <select id="etapaSelect" onchange="window.renderizarTabelaEGratico()">
                 <option value="TODAS">Todas as Etapas</option>
                 <option value="EFAF">EFAF (Ensino Fund. Anos Finais)</option>
                 <option value="EM_TODOS">Ensino Médio (Todos)</option>
@@ -156,7 +156,7 @@
         </div>
         <div>
             <label>Turno:</label>
-            <select id="turnoSelect" onchange="renderizarTabelaEGratico()">
+            <select id="turnoSelect" onchange="window.renderizarTabelaEGratico()">
                 <option value="TODOS">Todos os Turnos</option>
                 <option value="INTEGRAL">Integral</option>
                 <option value="PARCIAL">Parcial</option>
@@ -172,13 +172,16 @@
 </div>
 
 <script type="module">
-    // Importa o cliente oficial do Supabase direto do servidor de distribuição
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    // Importa o cliente oficial do Supabase
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-const supabaseUrl = 'https://tcqppqgpbbtyxyfftcrb.supabase.co'
-const supabaseKey = 'sb_publishable_UEe5XXKEkzvPlA61E6vDjQ_kVQwfiCH' 
+    // =====================================================================
+    // CREDENCIAIS DO SUPABASE (A chave fornecida já foi inserida)
+    // =====================================================================
+    const SUPABASE_URL = 'COLE_AQUI_A_SUA_URL'; // <-- FALTA APENAS COLAR A URL (https://tcqp...)
+    const SUPABASE_ANON_KEY = 'sb_publishable_UEe5XXKEkzvPlA61E6vDjQ_kVQwfiCH'; 
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     let bancoDadosEscola = []; 
     let disciplinasDisponiveis = new Set();
@@ -187,7 +190,6 @@ const supabase = createClient(supabaseUrl, supabaseKey)
     let currentSortCol = 'media';
     let currentSortDir = 'desc';
 
-    // Executado ao carregar o site para checar se já está logado
     window.onload = async () => {
         mostrarCarregamento(true);
         const { data: { session } } = await supabase.auth.getSession();
@@ -200,7 +202,6 @@ const supabase = createClient(supabaseUrl, supabaseKey)
         }
     };
 
-    // Função de Autenticação
     window.executarLogin = async () => {
         const email = document.getElementById('loginEmail').value.trim();
         const pass = document.getElementById('loginPassword').value;
@@ -227,10 +228,8 @@ const supabase = createClient(supabaseUrl, supabaseKey)
         window.location.reload();
     };
 
-    // Inicializa os dados da escola pós-login
     async function inicializarPainel(emailUsuario) {
         try {
-            // 1. Cruza o e-mail com a tabela de permissões para achar o nome da escola
             const { data: permissoes, error: errPerm } = await supabase
                 .from('usuarios_escolas')
                 .select('nome_escola')
@@ -241,7 +240,6 @@ const supabase = createClient(supabaseUrl, supabaseKey)
             escolaOficialLogada = permissoes.nome_escola;
             document.getElementById('txtNomeEscola').innerText = escolaOficialLogada;
 
-            // 2. Puxa os resultados específicos daquela escola do banco de dados relacional
             const { data: resultados, error: errData } = await supabase
                 .from('resultados_avap')
                 .select('*')
@@ -250,21 +248,19 @@ const supabase = createClient(supabaseUrl, supabaseKey)
             if (errData) throw errData;
             bancoDadosEscola = resultados;
 
-            // Mapeia disciplinas encontradas
             disciplinasDisponiveis.clear();
             bancoDadosEscola.forEach(r => disciplinasDisponiveis.add(r.disciplina));
 
             mostrarSeccao('DASHBOARD');
-            renderizarTabelaEGratico();
+            window.renderizarTabelaEGratico();
         } catch (e) {
             alert("Erro crítico de inicialização: " + e.message);
-            executarLogout();
+            window.executarLogout();
         } finally {
             mostrarCarregamento(false);
         }
     }
 
-    // Regras de Ordenação Dinâmica
     window.definirOrdenacao = (coluna) => {
         if (currentSortCol === coluna) {
             currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
@@ -273,7 +269,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
             currentSortDir = 'desc';
             if (coluna === 'nome') currentSortDir = 'asc';
         }
-        renderizarTabelaEGratico();
+        window.renderizarTabelaEGratico();
     };
 
     window.toggleTextoCelula = (cell) => {
@@ -317,11 +313,11 @@ const supabase = createClient(supabaseUrl, supabaseKey)
         return "-";
     }
 
-    function renderizarTabelaEGratico() {
+    // A função principal agora está exposta para os botões do HTML
+    window.renderizarTabelaEGratico = function() {
         const discArray = Array.from(disciplinasDisponiveis).sort();
         let linhasFiltradas = filtrarTurmasLocais(bancoDadosEscola);
 
-        // Agrupa as linhas do banco (que vêm por disciplina) em objetos de Turma completos
         let turmasUnicas = [...new Set(linhasFiltradas.map(l => l.turma))];
         let listaTurmasProcessadas = [];
 
@@ -361,7 +357,6 @@ const supabase = createClient(supabaseUrl, supabaseKey)
             });
         });
 
-        // Ordenação Dinâmica do Array
         listaTurmasProcessadas.sort((a, b) => {
             let valA, valB;
             if (currentSortCol === 'nome') { valA = a.turma; valB = b.turma; }
@@ -375,7 +370,6 @@ const supabase = createClient(supabaseUrl, supabaseKey)
             return currentSortDir === 'asc' ? valA - valB : valB - valA;
         });
 
-        // Montagem da Estrutura Visual da Tabela HTML
         let htmlRows = "";
         let labelsGrafico = [], valoresGrafico = [], coresGrafico = [];
 
@@ -397,32 +391,29 @@ const supabase = createClient(supabaseUrl, supabaseKey)
                 if (pct === -1) {
                     htmlRows += `<td class="cell-empty">-</td>`;
                 } else {
-                    htmlRows += `<td class="${getSemaforoClass(pct)} interactive-cell" data-showing-pct="true" data-pct="${pctStr}" data-rank="Sala: ${rInt}" onclick="toggleTextoCelula(this)">${pctStr}</td>`;
+                    htmlRows += `<td class="${getSemaforoClass(pct)} interactive-cell" data-showing-pct="true" data-pct="${pctStr}" data-rank="Sala: ${rInt}" onclick="window.toggleTextoCelula(this)">${pctStr}</td>`;
                 }
             });
 
-            htmlRows += `<td class="col-total ${getSemaforoClass(t.mediaGeral)} interactive-cell" data-showing-pct="true" data-pct="${mgStr}" data-rank="Sala: ${rIntMg}" onclick="toggleTextoCelula(this)">${mgStr}</td></tr>`;
+            htmlRows += `<td class="col-total ${getSemaforoClass(t.mediaGeral)} interactive-cell" data-showing-pct="true" data-pct="${mgStr}" data-rank="Sala: ${rIntMg}" onclick="window.toggleTextoCelula(this)">${mgStr}</td></tr>`;
 
-            // Dados para o Gráfico de Barras
             labelsGrafico.push(t.turma.substring(0, 12));
             let valChart = currentSortCol === 'media' ? t.mediaGeral : (t.disciplinas[currentSortCol] ? t.disciplinas[currentSortCol].pct : -1);
             valoresGrafico.push(valChart > -1 ? valChart.toFixed(1) : 0);
             coresGrafico.push(getChartColor(valChart));
         });
 
-        // Geração do Cabeçalho da Tabela
         let totalRegistros = listaTurmasProcessadas.length;
         let headerHtml = `<table class="data-table"><thead><tr>
             <th class="col-clas">Clas.<br>/${totalRegistros}</th>
-            <th style="width:180px;" class="${currentSortCol === 'nome' ? 'th-active' : ''}" onclick="definirOrdenacao('nome')">Turma/Sala</th>
-            <th class="${currentSortCol === 'pres' ? 'th-active' : ''}" onclick="definirOrdenacao('pres')">Alunos<br>(Pres.)</th>`;
+            <th style="width:180px;" class="${currentSortCol === 'nome' ? 'th-active' : ''}" onclick="window.definirOrdenacao('nome')">Turma/Sala</th>
+            <th class="${currentSortCol === 'pres' ? 'th-active' : ''}" onclick="window.definirOrdenacao('pres')">Alunos<br>(Pres.)</th>`;
         
         discArray.forEach(d => {
-            headerHtml += `<th class="${currentSortCol === d ? 'th-active' : ''}" onclick="definirOrdenacao('${d}')">${d}</th>`;
+            headerHtml += `<th class="${currentSortCol === d ? 'th-active' : ''}" onclick="window.definirOrdenacao('${d}')">${d}</th>`;
         });
-        headerHtml += `<th class="col-total ${currentSortCol === 'media' ? 'th-active' : ''}" onclick="definirOrdenacao('media')">Média<br>Geral</th></tr></thead><tbody>`;
+        headerHtml += `<th class="col-total ${currentSortCol === 'media' ? 'th-active' : ''}" onclick="window.definirOrdenacao('media')">Média<br>Geral</th></tr></thead><tbody>`;
 
-        // Linha com a Média da Unidade Escolar
         let tMedia = globPossiveis > 0 ? (globAcertos / globPossiveis) * 100 : -1;
         let totalRow = `<tr class="row-total"><td colspan="2" class="col-text">MÉDIA GERAL DA UNIDADE (FILTRADA)</td><td>${globAlunos}</td>`;
         discArray.forEach(d => {
@@ -433,10 +424,9 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
         document.getElementById('tabelaArea').innerHTML = headerHtml + totalRow + htmlRows + `</tbody></table>`;
         
-        // Atualiza título do Gráfico baseado no filtro de ordenação selecionado
         let tituloGrafico = currentSortCol === 'media' ? "Média Geral por Turma (%)" : `Desempenho em ${currentSortCol} (%)`;
         desenharGrafico(labelsGrafico, valoresGrafico, coresGrafico, tituloGrafico);
-    }
+    };
 
     function desenharGrafico(labels, data, colors, title) {
         const ctx = document.getElementById('mainChart').getContext('2d');
@@ -458,7 +448,6 @@ const supabase = createClient(supabaseUrl, supabaseKey)
         });
     }
 
-    // Funções Utilitárias Visuais
     function getSemaforoClass(pct) {
         if (pct < 0 || isNaN(pct) || pct === undefined) return "cell-empty";
         if (pct < 30) return "cell-red";
