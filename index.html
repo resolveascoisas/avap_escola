@@ -245,14 +245,36 @@
             let ehMaster = (escolaOficialLogada === 'URE_MASTER');
             document.getElementById('txtNomeEscola').innerText = ehMaster ? "Painel Gerencial URE" : escolaOficialLogada;
 
-            let query = supabase.from('resultados_avap').select('*');
-            if (!ehMaster) {
-                query = query.eq('escola', escolaOficialLogada);
-            }
+            // ==============================================================
+            // NOVO: LOOP DE BUSCA PARA DRIBLAR O LIMITE DE 1000 LINHAS
+            // ==============================================================
+            let todosResultados = [];
+            let loteTamanho = 1000;
+            let inicio = 0;
+            let temMais = true;
 
-            const { data: resultados, error: errData } = await query;
-            if (errData) throw errData;
-            bancoDadosEscola = resultados;
+            while (temMais) {
+                let query = supabase.from('resultados_avap').select('*').range(inicio, inicio + loteTamanho - 1);
+                
+                if (!ehMaster) {
+                    query = query.eq('escola', escolaOficialLogada);
+                }
+
+                const { data: lote, error: errData } = await query;
+                if (errData) throw errData;
+
+                todosResultados = todosResultados.concat(lote);
+
+                // Se o pacote vier com menos de 1000, significa que acabou
+                if (lote.length < loteTamanho) {
+                    temMais = false;
+                } else {
+                    inicio += loteTamanho; // Prepara para buscar os próximos 1000
+                }
+            }
+            
+            bancoDadosEscola = todosResultados;
+            // ==============================================================
 
             disciplinasDisponiveis.clear();
             bancoDadosEscola.forEach(r => disciplinasDisponiveis.add(r.disciplina));
@@ -281,7 +303,6 @@
             mostrarCarregamento(false);
         }
     }
-
     window.definirOrdenacao = (coluna) => {
         if (currentSortCol === coluna) {
             currentSortDir = currentSortDir === 'asc' ? 'desc' : 'asc';
